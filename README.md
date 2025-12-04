@@ -2,7 +2,7 @@
 
 ## 📘 Project Overview
 
-This repository contains the full Python software stack developed for my undergraduate research project on **stationary human presence detection using a commercial 24 GHz frequency-modulated continuous-wave (FMCW) radar**.  
+This repository contains the full Python software stack developed for my undergraduate research project on stationary human presence detection using a commercial 24 GHz frequency-modulated continuous-wave (FMCW) radar.  
 The central goal of this project was to evaluate two distinct detection paradigms:
 
 1. **Classical threshold-based signal processing**  
@@ -11,7 +11,7 @@ The central goal of this project was to evaluate two distinct detection paradigm
 2. **Unsupervised machine-learning (ML) detection**  
    using a PCA + Isolation Forest anomaly-detection pipeline trained only on non-human examples.
 
-To support this investigation, I developed a fully custom **Python radar interface**, capable of:
+To support this investigation, I developed a fully custom Python radar interface, capable of:
 
 - Configuring the SiRad Easy r4 radar over UART  
 - Receiving and streaming I/Q ADC data in real time  
