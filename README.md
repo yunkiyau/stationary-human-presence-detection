@@ -25,6 +25,7 @@ The detection pipelines in this repository reproduce exactly the analyses report
 
 # 📁 Repository Structure
 
+```text
 scripts/
 │
 ├── ADC_FFTs_07OCT.py
