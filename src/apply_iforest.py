@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Apply a saved Isolation Forest model to an evaluation dataset.
 
@@ -195,3 +194,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
