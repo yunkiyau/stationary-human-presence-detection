@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Train Isolation Forest on FFT-bin features from the development dataset.
 
@@ -289,3 +288,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
