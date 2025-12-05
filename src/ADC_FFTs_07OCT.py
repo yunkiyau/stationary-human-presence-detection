@@ -1,9 +1,3 @@
-# ADC_FFTs_30SEP_rangeheader.py
-# Full drop-in:
-# - 2x2 plots (ADC, FFT(I/Q), |FFT(I+jQ)|, phase(t))
-# - ds=1/ds=2/ds=3 ingestion
-# - CSV export with full FFT magnitudes and range in header (e.g., fft_bin_0@0.00m)
-# - Larger REC badge + mm:ss timer
 # - Keybinds: [D]=DC toggle, [W]=complex window toggle, [R]=record, [Q]=quit
 
 import serial, struct, time, csv, os
@@ -12,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
 # --- PORT / BAUD ---
-PORT = 'COM6'      # change if needed
+PORT = 'COM6'      # Change to local port
 BAUD = 230400
 
 # --- RAW-ADC configuration ---
@@ -146,10 +140,10 @@ def main():
 
     # Gate bins
     dR=bin_to_range_per_bin()
-    k_lo_f = m_to_k(R_GATE[0])                     # CHANGED
-    k_hi_f = m_to_k(R_GATE[1])                     # CHANGED
-    k_lo_f = max(0.0, min(k_lo_f, NFFT//2))        # CHANGED
-    k_hi_f = max(k_lo_f + 1e-9, min(k_hi_f, NFFT//2))  # CHANGED
+    k_lo_f = m_to_k(R_GATE[0])                     
+    k_hi_f = m_to_k(R_GATE[1])                     
+    k_lo_f = max(0.0, min(k_lo_f, NFFT//2))        
+    k_hi_f = max(k_lo_f + 1e-9, min(k_hi_f, NFFT//2))  
 
     # FFT(I)&(Q)
     ax_fft.set_title("FFT of I and Q Channels")
@@ -158,7 +152,7 @@ def main():
     ax_fft.set_xlabel(f"FFT bin"); ax_fft.set_ylabel("FFT value")
     ax_fft.grid(True,ls=':',lw=0.6); ax_fft.legend(loc='upper right'); ax_fft.set_xlim(0,NFFT//2)
     secax_iq=ax_fft.secondary_xaxis('top',functions=(k_to_m,m_to_k)); secax_iq.set_xlabel("Range (m)")
-    ax_fft.axvspan(k_lo_f, k_hi_f, facecolor="#39FF14", alpha=0.25)      # CHANGED
+    ax_fft.axvspan(k_lo_f, k_hi_f, facecolor="#39FF14", alpha=0.25)      
 
     # Complex FFT
     ax_c.set_title("Complex Spectrum |FFT(I + jQ)|")
@@ -166,7 +160,7 @@ def main():
     ax_c.set_xlabel(f"FFT bin"); ax_c.set_ylabel("FFT magnitude")
     ax_c.grid(True,ls=':',lw=0.6); ax_c.legend(loc='upper right'); ax_c.set_xlim(0,NFFT//2)
     secax=ax_c.secondary_xaxis('top',functions=(k_to_m,m_to_k)); secax.set_xlabel("Range (m)")
-    ax_c.axvspan(k_lo_f, k_hi_f, facecolor="#39FF14", alpha=0.25)        # CHANGED
+    ax_c.axvspan(k_lo_f, k_hi_f, facecolor="#39FF14", alpha=0.25)        
 
     # Phase plot
     ax_res.set_title("Unwrapped Phase From Range-Gated Z(t)")
@@ -288,3 +282,4 @@ def main():
         sp.close()
 
 if __name__=="__main__": main()
+
