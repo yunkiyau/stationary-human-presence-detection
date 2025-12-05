@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Analyze development-set features and pick Youden-optimal thresholds.
 
@@ -28,7 +27,6 @@ Notes
     spectral_flatness, crest_factor, spectral_centroid_Hz, total_power
   If some are missing, it automatically falls back to ALL numeric columns
   (excluding identifiers/metadata).
-- The script is robust to minor column differences and NaNs.
 """
 
 from pathlib import Path
@@ -46,7 +44,7 @@ DEFAULT_FEATURES = [
     "total_power",
 ]
 
-# --- Pretty display names for plots / messages ---
+# --- Display names for plots / messages ---
 NAME_MAP = {
     "spectral_flatness": "Spectral flatness",
     "crest_factor": "Crest factor",
@@ -59,12 +57,9 @@ META_COLS = {
 }
 
 def disp(feat: str) -> str:
-    """Return a pretty display name for a feature key."""
-    # EXACTLY what you asked for: look up the key, else nice fallback
     return NAME_MAP.get(feat, feat.replace("_", " ").title())
 
 def slug(text: str) -> str:
-    """File/FS-safe slug from a display name."""
     return (text.lower()
             .replace("(", "").replace(")", "")
             .replace("[", "").replace("]", "")
@@ -136,7 +131,6 @@ def plot_histogram(df: pd.DataFrame, feat_key: str, feat_display: str, thr: floa
     plt.hist(dat1, bins=bins, alpha=0.5, label="Positive (human)")
     plt.axvline(thr, linewidth=2, label="Threshold (Youden's J)")
 
-    # ——— Use PRETTY names here ———
     plt.xlabel(feat_display)
     plt.ylabel("Samples (no.)")
     plt.title(f"{feat_display} distribution (development dataset)")
@@ -195,7 +189,7 @@ def main():
             "n_pos": int((df.label==1).sum()),
         })
 
-        # Plot with PRETTY names
+        # Plot
         plot_histogram(df, feat_key=feat_key, feat_display=feat_display,
                        thr=best["threshold"], plots_dir=args.plots_dir)
 
@@ -215,3 +209,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
