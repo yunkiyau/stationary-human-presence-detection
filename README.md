@@ -1,8 +1,6 @@
 # Stationary Human Presence Detection using 24 GHz FMCW Radar  
 
-## 📘 Project Overview
-
-This repository contains the full Python software stack developed for my undergraduate research project on stationary human presence detection using a commercial 24 GHz frequency-modulated continuous-wave (FMCW) radar.  
+This repository contains the full Python software stack that I developed for my Dalyell research project on stationary human presence detection using a commercial 24 GHz frequency-modulated continuous-wave (FMCW) radar.  
 The central goal of this project was to evaluate two distinct detection paradigms:
 
 1. **Classical threshold-based signal processing**  
@@ -23,7 +21,7 @@ The detection pipelines in this repository reproduce exactly the analyses report
 
 ---
 
-# 📁 Repository Structure
+# Repository Structure
 
 ```text
 scripts/
@@ -39,13 +37,16 @@ data/
 
 models/
     iforest_PCA_negonly.joblib
+
+report/
+   Yunki Yau Dalyell Report 12NOV25.pdf
 ```
 
 Each script is documented below.
 
 ---
 
-# 🛰️ 1. `ADC_FFTs_07OCT.py` — Real-Time Radar Interface (Main Acquisition Script)
+#  1. `ADC_FFTs_07OCT.py` — Real-Time Radar Interface (Main Acquisition Script)
 
 **Purpose:**  
 Primary data-acquisition program used in the research paper.
@@ -54,7 +55,6 @@ This script:
 
 - Connects to the SiRad Easy r4 radar via UART  
 - Sends configuration commands  
-  (`!S150B2812`, `!F000168F0`, `!P00000603`, `!B2452C122`)  
 - Streams I/Q ADC samples in real time  
 - Computes:
   - FFT(I), FFT(Q)  
@@ -84,7 +84,7 @@ This is the main script used to generate all raw data for the project.
 
 ---
 
-# 📉 2. `development_thresholds.py` — Threshold Optimisation (Youden’s J)
+# 2. `development_thresholds.py` — Threshold Optimisation (Youden’s J)
 
 **Purpose:**  
 Implements the classical threshold-based classifier used in the paper.
@@ -113,7 +113,7 @@ This script produced the threshold values quoted in the research article.
 
 ---
 
-# 🤖 3. `train_iforest.py` — Train PCA + Isolation Forest Model (Unsupervised ML)
+# 3. `train_iforest.py` — Train PCA + Isolation Forest Model (Unsupervised ML)
 
 **Purpose:**  
 Train the anomaly-detection model described in Section II-D.2 of the paper.
@@ -121,17 +121,17 @@ Train the anomaly-detection model described in Section II-D.2 of the paper.
 Pipeline:
 
 1. Read development CSVs  
-2. Extract FFT-bin vector from column 4 onward  
+2. Extract FFT-bin vectors
 3. Per-record L2 normalisation  
 4. StandardScaler  
 5. Optional PCA (e.g., 95% variance retained)  
 6. Train Isolation Forest  
    - Fully unsupervised  
-   - If positive/negative folders provided, train on **negatives only**
+   - Train on negative (non-human) samples only
 
 Outputs:
 
-- `iforest_model.joblib` containing:
+- `.joblib` model containing:
   - `"scaler"`
   - `"pca"` (or `None`)
   - `"iforest"`
@@ -142,7 +142,7 @@ Outputs:
 
 ---
 
-# 🔍 4. `apply_iforest.py` — Apply Trained Model to Evaluation Dataset
+#  4. `apply_iforest.py` — Apply Trained Model to Evaluation Dataset
 
 **Purpose:**  
 Runs the trained Isolation Forest model on unseen evaluation data.
@@ -165,7 +165,7 @@ Matches the evaluation stage from the research article.
 
 ---
 
-# 📦 Installation
+#  Installation
 
 Install all required packages with:
 
