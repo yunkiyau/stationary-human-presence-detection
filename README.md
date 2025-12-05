@@ -49,7 +49,7 @@ Each script is documented below.
 #  1. `ADC_FFTs_07OCT.py` — Real-Time Radar Interface (Main Acquisition Script)
 
 **Purpose:**  
-Primary data-acquisition program used in the research paper.
+Primary data-acquisition program used in the report.
 
 This script:
 
@@ -109,14 +109,14 @@ What it does:
   - Summary CSV of thresholds  
   - Histogram plots for each feature
 
-This script produced the threshold values quoted in the research article.
+This script produced the threshold values quoted in the report.
 
 ---
 
 # 3. `train_iforest.py` — Train PCA + Isolation Forest Model (Unsupervised ML)
 
 **Purpose:**  
-Train the anomaly-detection model described in Section II-D.2 of the paper.
+Train the anomaly-detection model described in Section II-D.2 of the report.
 
 Pipeline:
 
@@ -126,8 +126,8 @@ Pipeline:
 4. StandardScaler  
 5. Optional PCA (e.g., 95% variance retained)  
 6. Train Isolation Forest  
-   - Fully unsupervised  
-   - Train on negative (non-human) samples only
+   - Fully unsupervised 
+   - The model used in the report was trained on negative (non-human) samples only
 
 Outputs:
 
@@ -161,7 +161,7 @@ This script:
   - `eval_predictions_if.csv`  
   - `eval_summary_if.html` (metrics & confusion matrix)
 
-Matches the evaluation stage from the research article.
+Matches the evaluation stage from the report.
 
 ---
 
