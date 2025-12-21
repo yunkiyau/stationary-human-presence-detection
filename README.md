@@ -1,6 +1,6 @@
 # Stationary Human Presence Detection using 24 GHz FMCW Radar  
 
-This repository contains the full Python software stack that I developed for my Dalyell research project on stationary human presence detection using a commercial 24 GHz frequency-modulated continuous-wave (FMCW) radar.  
+This repository contains an end-to-end Python software stack for stationary human presence detection using a commercial 24 GHz frequency-modulated continuous-wave (FMCW) radar. 
 The central goal of this project was to evaluate two distinct detection paradigms:
 
 1. **Classical threshold-based signal processing**  
