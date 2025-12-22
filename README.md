@@ -17,23 +17,23 @@ To support this investigation, I developed a fully custom Python radar interface
 - Extracting the unwrapped temporal phase ϕ(t)  
 - Saving timestamped CSV data for further analysis  
 
-The detection pipelines in this repository reproduce exactly the analyses reported in the final research article, including the feature-extraction, Youden’s-J threshold optimisation, model training, and evaluation.
+The detection pipelines in this repository reproduce the analyses reported in the final research article, including the feature-extraction, Youden’s-J threshold optimisation, model training, and evaluation.
 
 ---
 
-# Repository Structure
+## Repository Structure
 
 ```text
 scripts/
 │
-├── ADC_FFTs_07OCT.py
-├── ADC_FFTs_30SEP_rangeheader.py
-├── development_thresholds.py
+├── radar_acquisition_fft.py
+├── ADC_fft_with_range_metadata.py
+├── threshold_optimisation.py
 ├── train_iforest.py
 └── apply_iforest.py
 
 data/
-    raw data will be uploaded at a later date
+    sample_recording.csv
 
 models/
     iforest_PCA_negonly.joblib
@@ -42,11 +42,75 @@ report/
    Yunki Yau Dalyell Report 12NOV25.pdf
 ```
 
+## Installation
+
+It is recommended to use a virtual environment.
+
+```bash
+python -m venv venv
+source venv/bin/activate   # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+The radar communicates with the host machine over a UART serial interface.
+Ensure that the appropriate serial drivers are installed and that the radar is connected and powered on.
+
+## Usage / How to Run
+
+The overall workflow is:
+
+1. Acquire raw radar data and compute FFT/range-gated phase time series
+2. Extract features and perform classical threshold-based detection or
+3. Train and apply an unsupervised Isolation Forest detector
+
+**Note:** Some scripts require configuration of file paths, serial ports, or analysis parameters directly within the script.
+
+### 1. Real-time acquisition and FFT/range processing
+
+Run the main acquisition script:
+```bash
+python scripts/ADC_FFTs_07OCT.py
+```
+
+This script streams raw I/Q ADC data from the radar in real time, performs FFT-based range processing, computes the weighted complex sum within a specified range gate, and displays live diagnostic plots.
+CSV files containing phase and FFT-bin data can be recorded using the keyboard controls.
+
+Ensure that the correct serial port and radar configuration parameters are set in the script before running.
+
+### 2. Classical threshold-based detection
+
+Run the threshold optimisation and evaluation pipeline:
+```bash
+python scripts/development_thresholds.py
+```
+
+This script loads extracted feature CSVs, evaluates candidate thresholds for each feature, and selects the rule that maximises Youden’s J statistic.
+It generates summary CSVs, histograms, and performance metrics consistent with the reported results.
+
+### 3. Unsupervised ML detection (Isolation Forest)
+
+Train the model
+```bash
+python scripts/train_iforest.py
+```
+
+This script trains a PCA + Isolation Forest anomaly detector using development data (negative samples only, as reported).
+The trained model is saved as a .joblib file for later use.
+
+Apply the trained model
+```bash
+python scripts/apply_iforest.py
+```
+
+This script applies the trained model to unseen evaluation data and outputs prediction CSVs and HTML summaries containing performance metrics and confusion matrices.
+
+## Script Documentation
+
 Each script is documented below.
 
 ---
 
-#  1. `ADC_FFTs_07OCT.py` — Real-Time Radar Interface (Main Acquisition Script)
+### `ADC_FFTs_07OCT.py` — Real-Time Radar Interface (Main Acquisition Script)
 
 **Purpose:**  
 Primary data-acquisition program used in the report.
@@ -84,7 +148,7 @@ This is the main script used to generate all raw data for the project.
 
 ---
 
-# 2. `development_thresholds.py` — Threshold Optimisation (Youden’s J)
+### `development_thresholds.py` — Threshold Optimisation (Youden’s J)
 
 **Purpose:**  
 Implements the classical threshold-based classifier used in the paper.
@@ -113,7 +177,7 @@ This script produced the threshold values quoted in the report.
 
 ---
 
-# 3. `train_iforest.py` — Train PCA + Isolation Forest Model (Unsupervised ML)
+### `train_iforest.py` — Train PCA + Isolation Forest Model (Unsupervised ML)
 
 **Purpose:**  
 Train the anomaly-detection model described in Section II-D.2 of the report.
@@ -142,7 +206,7 @@ Outputs:
 
 ---
 
-#  4. `apply_iforest.py` — Apply Trained Model to Evaluation Dataset
+###  `apply_iforest.py` — Apply Trained Model to Evaluation Dataset
 
 **Purpose:**  
 Runs the trained Isolation Forest model on unseen evaluation data.
@@ -164,11 +228,4 @@ This script:
 Matches the evaluation stage from the report.
 
 ---
-
-#  Installation
-
-Install all required packages with:
-
-```bash
-pip install numpy pandas matplotlib scikit-learn joblib pyserial
 
