@@ -17,7 +17,7 @@ Outputs:
 - dev_predictions.csv (file, score, if_pred(±1), pred_label(0/1), [true_label if available])
 - dev_training_summary.html
 
-Usage (recommended):
+Usage:
   python train_iforest.py \
     --dev_dir ./dev_raw \
     --dev_posdir ./dev_pos --dev_negdir ./dev_neg \
@@ -43,12 +43,52 @@ import matplotlib.pyplot as plt
 
 # ---------------- Helpers ----------------
 def list_csvs(folder: Path, recursive: bool) -> list[Path]:
+   """
+    List CSV files under a folder.
+
+    Parameters
+    ----------
+    folder : Path
+        Root folder to search.
+    recursive : bool
+        If True, search recursively with rglob; otherwise only direct children.
+
+    Returns
+    -------
+    list[Path]
+        Sorted list of CSV file paths.
+    """
     if recursive:
         return sorted(p for p in folder.rglob("*.csv") if p.is_file())
     return sorted(p for p in folder.glob("*.csv") if p.is_file())
 
 def load_fft_vector(csv_path: Path, from_col: int = 4) -> np.ndarray | None:
-    """Load CSV, slice columns from 'from_col' to end; average rows → one vector."""
+     """
+    Load one CSV file and return a single FFT-bin feature vector.
+
+    The script expects FFT bins to start at column index `from_col`. If the CSV has
+    multiple rows (e.g., multiple frames), it averages them to produce one vector.
+
+    Steps:
+    - Read CSV (with header; fallback to header=None)
+    - Slice columns from from_col onward
+    - Coerce to numeric; drop rows with any NaN/inf
+    - Average rows -> 1D vector
+    - L2-normalize (emphasize spectral shape over absolute scale)
+
+    Parameters
+    ----------
+    csv_path : Path
+        Path to one CSV file.
+    from_col : int
+        0-indexed column index where FFT bins begin.
+
+    Returns
+    -------
+    np.ndarray | None
+        1D normalized feature vector, or None if the file cannot be parsed.
+    """
+   
     try:
         df = pd.read_csv(csv_path, header=0)
     except Exception:
@@ -73,7 +113,25 @@ def load_fft_vector(csv_path: Path, from_col: int = 4) -> np.ndarray | None:
     v = v / (np.linalg.norm(v) + 1e-12)
     return v
 
-def build_name_sets(folder: Path):
+def build_name_sets(folder: Path | None) -> tuple[set[str], set[str]]::
+   """
+    Build fast lookup sets for matching dev files to pos/neg ground-truth folders.
+
+    The matching is done by:
+    - full filename (case-insensitive)
+    - stem (filename without extension)
+
+    Parameters
+    ----------
+    folder : Path | None
+        Folder containing CSV files for one class.
+
+    Returns
+    -------
+    tuple[set[str], set[str]]
+        (filenames_set, stems_set), both lowercased.
+    """
+   
     files_set, stems_set = set(), set()
     if folder and folder.exists():
         for p in folder.iterdir():
@@ -83,6 +141,29 @@ def build_name_sets(folder: Path):
     return files_set, stems_set
 
 def infer_label_by_dirs(path: Path, pos_sets, neg_sets) -> int | None:
+   """
+    Infer ground-truth label for a file based on membership in pos/neg directories.
+
+    Returns:
+    - 1 for positive class (human present)
+    - 0 for negative class (no human)
+    - None if unknown or ambiguous (matches both or neither)
+
+    Parameters
+    ----------
+    path : Path
+        File to label.
+    pos_sets : tuple[set[str], set[str]]
+        (pos_filenames, pos_stems) from build_name_sets().
+    neg_sets : tuple[set[str], set[str]]
+        (neg_filenames, neg_stems) from build_name_sets().
+
+    Returns
+    -------
+    int | None
+        Inferred label or None if unknown/ambiguous.
+    """
+
     """Return 1 (pos), 0 (neg), or None."""
     base = path.name.lower(); stem = path.stem.lower()
     pos_files, pos_stems = pos_sets; neg_files, neg_stems = neg_sets
@@ -98,7 +179,25 @@ def infer_label_by_dirs(path: Path, pos_sets, neg_sets) -> int | None:
         return None
     return None
 
-def fit_pca(X, pca_components: int | None, pca_var: float | None):
+def fit_pca(X, pca_components: int | None, pca_var: float | None) -> PCA | None:
+   """
+    Fit PCA on training data if PCA settings are provided.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Training data after scaling.
+    pca_components : int | None
+        If set, use an explicit number of components.
+    pca_var : float | None
+        If set (e.g., 0.95), choose n_components to preserve this explained variance.
+
+    Returns
+    -------
+    PCA | None
+        Fitted PCA instance, or None if PCA disabled.
+    """
+
     if pca_var is not None:
         return PCA(n_components=pca_var, whiten=True, svd_solver="full", random_state=42).fit(X)
     if pca_components is not None:
@@ -106,6 +205,20 @@ def fit_pca(X, pca_components: int | None, pca_var: float | None):
     return None  # No PCA if neither provided
 
 def cm_metrics(cm):
+    """
+    Compute standard binary classification metrics from a confusion matrix.
+
+    Parameters
+    ----------
+    cm : np.ndarray
+        Confusion matrix with shape (2,2) ordered as labels [0,1].
+
+    Returns
+    -------
+    dict
+        accuracy, sensitivity (TPR), specificity (TNR), precision (PPV), f1, youden_J.
+    """
+   
     tn, fp, fn, tp = cm.ravel()
     total = tn+fp+fn+tp
     acc = (tp+tn)/total if total else np.nan
@@ -118,6 +231,21 @@ def cm_metrics(cm):
     return dict(accuracy=acc, sensitivity=tpr, specificity=tnr, precision=ppv, f1=f1, youden_J=J)
 
 def write_html(path: Path, ctx: dict):
+   """
+    Write a small HTML report summarising training configuration and dev performance.
+
+    Parameters
+    ----------
+    path : Path
+        Output HTML filepath.
+    ctx : dict
+        Dictionary of summary fields (strings/numbers/paths).
+
+    Returns
+    -------
+    None
+    """
+
     esc = {k: html.escape(str(v)) for k, v in ctx.items()}
     html_str = f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>DEV IsolationForest Summary</title>
@@ -155,24 +283,26 @@ Accuracy: {esc['acc']} • TPR: {esc['tpr']} • TNR: {esc['tnr']} • F1: {esc[
 
 # ---------------- Main ----------------
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dev_dir", type=Path, required=True)
-    ap.add_argument("--recursive", action="store_true")
-    ap.add_argument("--dev_posdir", type=Path, default=None)
-    ap.add_argument("--dev_negdir", type=Path, default=None)
-    ap.add_argument("--pca_components", type=int, default=None)
+   """Train an Isolation Forest on development FFT-bin features and write summary outputs."""
+    ap = argparse.ArgumentParser(
+        description="Train Isolation Forest on FFT-bin vectors (with optional PCA) and export dev summaries."
+    )
+    ap.add_argument("--dev_dir", type=Path, required=True, help="Directory containing dev CSV files.")
+    ap.add_argument("--recursive", action="store_true", help="Recursively search for CSV files under dev_dir.")
+    ap.add_argument("--dev_posdir", type=Path, default=None, help="Optional directory of dev positive examples.")
+    ap.add_argument("--dev_negdir", type=Path, default=None, help="Optional directory of dev negative examples.")
+    ap.add_argument("--pca_components", type=int, default=None, help="If set, use this many PCA components.")
     ap.add_argument("--pca_var", type=float, default=None, help="e.g., 0.95 (omit to disable PCA)")
     ap.add_argument("--n_estimators", type=int, default=200)
-    ap.add_argument("--contamination", type=float, default=0.10, help="expected fraction of anomalies")
-    ap.add_argument("--max_features", type=float, default=1.0, help="IsolationForest max_features")
+    ap.add_argument("--contamination", type=float, default=0.10, help="Expected fraction of anomalies.")
+    ap.add_argument("--max_features", type=float, default=1.0, help="IsolationForest max_features.")
     ap.add_argument("--random_state", type=int, default=42)
     ap.add_argument("--out_model", type=Path, default=Path("iforest_model.joblib"))
     ap.add_argument("--dev_pred", type=Path, default=Path("dev_predictions_if.csv"))
     ap.add_argument("--summary_html", type=Path, default=Path("dev_summary_if.html"))
     ap.add_argument("--from_col", type=int, default=4, help="Start column for FFT bins (0-index).")
     ap.add_argument("--pca2d_png", type=Path, default=Path("dev_pca2d.png"))
-    ap.add_argument("--make_pca2d_plot", action="store_true")
-
+    ap.add_argument("--make_pca2d_plot", action="store_true", help="Write PCA(2) scatter colored by anomaly score.")
     args = ap.parse_args()
 
     dev_files = list_csvs(args.dev_dir, args.recursive)
@@ -232,9 +362,14 @@ def main():
     # Predict on all dev for summary
     Xs_all = scaler.transform(X_all)
     Xr_all = pca.transform(Xs_all) if pca is not None else Xs_all
+
+   # sklearn IsolationForest.predict: +1=inlier, -1=outlier
     if_pred = iforest.predict(Xr_all)  # +1 inlier (NEG), -1 outlier (POS)
     # map to {0,1}
+
+   # Map: inlier -> 0 (non-human), outlier -> 1 (human-present anomaly)
     pred_label = np.where(if_pred == 1, 0, 1)
+
     # anomaly score: higher = more anomalous
     scores = -iforest.decision_function(Xr_all)
 
@@ -288,4 +423,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
