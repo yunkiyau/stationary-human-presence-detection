@@ -1,23 +1,32 @@
 """
 Apply a saved Isolation Forest model to an evaluation dataset.
 
-- Loads {"scaler","pca","iforest","feature_from_col"} from .joblib
-- Extracts FFT-bin vectors from eval CSVs (from_col..end), per-file L2-normalize
-- Standardize → PCA (if present) → IsolationForest.predict
-- Maps +1 (inlier) → 0 (non-human), -1 (outlier) → 1 (human)
-- Writes eval_predictions.csv and eval_summary_if.html
+This script loads a previously trained model bundle (joblib) containing:
+    {"scaler", "pca", "iforest", "feature_from_col"}
 
-useage:
-python apply_iforest.py \
-  --model iforest_model.joblib \
-  --eval_dir ./eval_raw \
-  --eval_posdir ./eval_pos \
-  --eval_negdir ./eval_neg \
-  --eval_pred eval_predictions_if.csv \
-  --summary_html eval_summary_if.html \
-  --hist_png anomaly_hist.png \
-  --hist_bins 20
+It then:
+- Extracts FFT-bin vectors from evaluation CSVs (columns from `from_col` onward),
+  averages rows (if present), and L2-normalizes per file.
+- Applies StandardScaler -> PCA (if present) -> IsolationForest.predict
+- Maps predictions:
+      +1 (inlier)  -> 0 (non-human / normal)
+      -1 (outlier) -> 1 (human-present anomaly)
+- Writes evaluation predictions to CSV and a lightweight HTML summary report.
+- Optionally infers ground truth labels based on eval_posdir / eval_negdir membership.
 
+Example usage:
+    python apply_iforest.py \
+      --model iforest_model.joblib \
+      --eval_dir ./eval_raw \
+      --eval_posdir ./eval_pos \
+      --eval_negdir ./eval_neg \
+      --eval_pred eval_predictions_if.csv \
+      --summary_html eval_summary_if.html
+
+Notes:
+- This script assumes the evaluation CSV format matches training: FFT bins start at
+  the same column index stored in `feature_from_col`.
+- If eval_posdir/eval_negdir are not supplied, no confusion-matrix metrics are computed.
 """
 
 from pathlib import Path
@@ -29,11 +38,53 @@ from datetime import datetime
 import joblib
 
 def list_csvs(folder: Path, recursive: bool) -> list[Path]:
+  """
+    List CSV files under a folder.
+
+    Parameters
+    ----------
+    folder : Path
+        Root folder to search for CSV files.
+    recursive : bool
+        If True, search recursively with rglob; otherwise only immediate children.
+
+    Returns
+    -------
+    list[Path]
+        Sorted list of CSV paths.
+    """
+  
     if recursive:
         return sorted(p for p in folder.rglob("*.csv") if p.is_file())
     return sorted(p for p in folder.glob("*.csv") if p.is_file())
 
 def load_fft_vector(csv_path: Path, from_col: int = 4) -> np.ndarray | None:
+   """
+    Load one CSV file and return a single FFT-bin feature vector.
+
+    The script expects FFT bins to begin at column index `from_col`. If the CSV has
+    multiple rows (e.g., multiple frames), it averages them to form one vector.
+
+    Steps:
+    - Read CSV (header=0 fallback header=None)
+    - Slice FFT bins: df.iloc[:, from_col:]
+    - Coerce to numeric; drop rows containing NaN/inf
+    - Average rows -> 1D vector
+    - L2-normalize 
+
+    Parameters
+    ----------
+    csv_path : Path
+        Path to the CSV file.
+    from_col : int
+        0-indexed column where FFT bins begin.
+
+    Returns
+    -------
+    np.ndarray | None
+        1D normalized FFT-bin vector, or None if parsing fails.
+    """
+  
     try:
         df = pd.read_csv(csv_path, header=0)
     except Exception:
@@ -58,6 +109,20 @@ def load_fft_vector(csv_path: Path, from_col: int = 4) -> np.ndarray | None:
     return v
 
 def build_name_sets(folder: Path):
+   """
+    Build lookup sets for fast ground-truth inference by directory membership.
+
+    Parameters
+    ----------
+    folder : Path | None
+        Folder containing class CSV files.
+
+    Returns
+    -------
+    tuple[set[str], set[str]]
+        (filenames_set, stems_set), both lowercased.
+    """
+
     files_set, stems_set = set(), set()
     if folder and folder.exists():
         for p in folder.iterdir():
@@ -67,6 +132,29 @@ def build_name_sets(folder: Path):
     return files_set, stems_set
 
 def infer_label_by_dirs(path: Path, pos_sets, neg_sets) -> int | None:
+  """
+    Infer a file's ground-truth label from membership in pos/neg directories.
+
+    Returns:
+    - 1 for positive class (human present)
+    - 0 for negative class (no human)
+    - None if unknown/ambiguous (matches both or neither)
+
+    Parameters
+    ----------
+    path : Path
+        File to label.
+    pos_sets : tuple[set[str], set[str]]
+        (pos_filenames, pos_stems).
+    neg_sets : tuple[set[str], set[str]]
+        (neg_filenames, neg_stems).
+
+    Returns
+    -------
+    int | None
+        Inferred label, or None if not uniquely determined.
+    """
+
     base = path.name.lower(); stem = path.stem.lower()
     pos_files, pos_stems = pos_sets; neg_files, neg_stems = neg_sets
     in_pos_file, in_neg_file = base in pos_files, base in neg_files
@@ -82,6 +170,20 @@ def infer_label_by_dirs(path: Path, pos_sets, neg_sets) -> int | None:
     return None
 
 def cm_metrics(cm):
+  """
+    Compute standard binary classification metrics from a confusion matrix.
+
+    Parameters
+    ----------
+    cm : np.ndarray
+        Confusion matrix with shape (2,2) ordered as labels [0,1].
+
+    Returns
+    -------
+    dict
+        accuracy, sensitivity (TPR), specificity (TNR), precision (PPV), f1, youden_J.
+    """
+
     tn, fp, fn, tp = cm.ravel()
     total = tn+fp+fn+tp
     acc = (tp+tn)/total if total else np.nan
@@ -93,7 +195,22 @@ def cm_metrics(cm):
     J   = tpr - fpr if (not np.isnan(tpr) and not np.isnan(fpr)) else np.nan
     return dict(accuracy=acc, sensitivity=tpr, specificity=tnr, precision=ppv, f1=f1, youden_J=J)
 
-def write_html(path: Path, ctx: dict):
+def write_html(path: Path, ctx: dict) -> None:
+  """
+    Write a small HTML summary report.
+
+    Parameters
+    ----------
+    path : Path
+        Output HTML file path.
+    ctx : dict
+        Summary values (strings/numbers/paths). Values will be HTML-escaped.
+
+    Returns
+    -------
+    None
+    """
+
     esc = {k: html.escape(str(v)) for k, v in ctx.items()}
     html_str = f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>EVAL IsolationForest Summary</title>
@@ -125,14 +242,17 @@ Accuracy: {esc['acc']} • TPR: {esc['tpr']} • TNR: {esc['tnr']} • F1: {esc[
     path.write_text(html_str, encoding="utf-8")
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--model", type=Path, required=True)
-    ap.add_argument("--eval_dir", type=Path, required=True)
-    ap.add_argument("--recursive", action="store_true")
-    ap.add_argument("--eval_posdir", type=Path, default=None)
-    ap.add_argument("--eval_negdir", type=Path, default=None)
-    ap.add_argument("--eval_pred", type=Path, default=Path("eval_predictions_if.csv"))
-    ap.add_argument("--summary_html", type=Path, default=Path("eval_summary_if.html"))
+  """Load a trained Isolation Forest model and apply it to an evaluation dataset."""
+    ap = argparse.ArgumentParser(
+        description="Apply a trained Isolation Forest model to eval CSVs and write predictions + HTML summary."
+    )
+    ap.add_argument("--model", type=Path, required=True, help="Path to trained joblib model bundle.")
+    ap.add_argument("--eval_dir", type=Path, required=True, help="Directory containing evaluation CSV files.")
+    ap.add_argument("--recursive", action="store_true", help="Recursively search eval_dir for CSV files.")
+    ap.add_argument("--eval_posdir", type=Path, default=None, help="Optional folder containing positive eval examples.")
+    ap.add_argument("--eval_negdir", type=Path, default=None, help="Optional folder containing negative eval examples.")
+    ap.add_argument("--eval_pred", type=Path, default=Path("eval_predictions_if.csv"), help="Output CSV path.")
+    ap.add_argument("--summary_html", type=Path, default=Path("eval_summary_if.html"), help="Output HTML path.")
     args = ap.parse_args()
 
     bundle = joblib.load(args.model)
@@ -145,19 +265,26 @@ def main():
         v = load_fft_vector(f, from_col=from_col)
         if v is not None:
             X_all.append(v); names.append(f)
+          
     if not X_all:
         print("ERROR: No usable eval vectors found.", file=sys.stderr); sys.exit(1)
     X_all = np.vstack(X_all)
 
+    # Match training-time transforms: StandardScaler -> (optional) PCA
     Xs = scaler.transform(X_all)
     Xr = pca.transform(Xs) if pca is not None else Xs
 
     if_pred = iforest.predict(Xr)         # +1 inlier (NEG), -1 outlier (POS)
+
+    # inlier -> 0 (non-human / normal), outlier -> 1 (human-present anomaly)
     pred_label = np.where(if_pred == 1, 0, 1)
+
+     # Negate so that higher values correspond to "more anomalous" for easier ranking.
     scores = -iforest.decision_function(Xr)
 
     rows = {"file": [p.name for p in names], "score_anom": scores,
             "if_pred_pm1": if_pred, "pred_label": pred_label}
+
     # Optional GT for metrics
     y_true = None
     if args.eval_posdir and args.eval_negdir:
@@ -194,4 +321,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
