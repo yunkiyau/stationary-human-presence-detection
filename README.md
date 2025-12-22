@@ -27,7 +27,6 @@ The detection pipelines in this repository reproduce the analyses reported in th
 scripts/
 │
 ├── radar_acquisition_fft.py
-├── ADC_fft_with_range_metadata.py
 ├── threshold_optimisation.py
 ├── train_iforest.py
 └── apply_iforest.py
@@ -69,7 +68,7 @@ The overall workflow is:
 
 Run the main acquisition script:
 ```bash
-python scripts/ADC_FFTs_07OCT.py
+python scripts/radar_acquisition_fft.py
 ```
 
 This script streams raw I/Q ADC data from the radar in real time, performs FFT-based range processing, computes the weighted complex sum within a specified range gate, and displays live diagnostic plots.
@@ -81,7 +80,7 @@ Ensure that the correct serial port and radar configuration parameters are set i
 
 Run the threshold optimisation and evaluation pipeline:
 ```bash
-python scripts/development_thresholds.py
+python scripts/threshold_optimisation.py
 ```
 
 This script loads extracted feature CSVs, evaluates candidate thresholds for each feature, and selects the rule that maximises Youden’s J statistic.
@@ -110,7 +109,7 @@ Each script is documented below.
 
 ---
 
-### `ADC_FFTs_07OCT.py` — Real-Time Radar Interface (Main Acquisition Script)
+### `radar_acquisition_fft.py` — Real-Time Radar Interface (Main Acquisition Script)
 
 **Purpose:**  
 Primary data-acquisition program used in the report.
@@ -148,7 +147,7 @@ This is the main script used to generate all raw data for the project.
 
 ---
 
-### `development_thresholds.py` — Threshold Optimisation (Youden’s J)
+### `threshold_optimisation.py` — Threshold Optimisation (Youden’s J)
 
 **Purpose:**  
 Implements the classical threshold-based classifier used in the paper.
