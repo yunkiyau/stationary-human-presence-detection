@@ -228,3 +228,10 @@ Matches the evaluation stage from the report.
 
 ---
 
+## Acknowledgements
+This work was conducted under supervision at the Australian Centre for Robotics.
+Supervised by Dr. Graham Brooker.
+
+Code and documentation are shared for academic review and demonstration purposes.
+Please contact the author before reusing or redistributing any portion of this work.
+
