@@ -1,4 +1,46 @@
-# - Keybinds: [D]=DC toggle, [W]=complex window toggle, [R]=record, [Q]=quit
+"""
+radar_acquisition_fft.py
+
+Real-time acquisition and signal-processing interface for the Indie Semiconductor
+SiRad Easy r4 24 GHz FMCW radar (TRX_024_046 front-end). The script configures the
+radar over UART, streams raw I/Q ADC samples, performs FFT-based range processing,
+computes a weighted complex sum Z(t) over a user-defined range gate, and tracks the
+unwrapped phase φ(t) in real time.
+
+Outputs and functionality:
+- Live plots: ADC (I/Q), FFT(I), FFT(Q), |FFT(I + jQ)|, and unwrapped phase φ(t)
+- Optional CSV recording (via keybind) including timestamped phase, |Z|, and FFT bins
+  annotated with range (m) per bin.
+
+Hardware / environment requirements:
+- SiRad Easy r4 radar connected via a serial/UART interface
+- Python dependencies listed in requirements.txt (numpy, pyserial, matplotlib)
+
+Configuration:
+Edit the constants near the top of the file to match your setup:
+- PORT, BAUD
+- Radar configuration commands (S, F, P, B)
+- FFT and range-gate settings (NFFT, FS_ADC, SLOPE, R_GATE)
+
+Keybinds:
+- [R] start/stop CSV recording
+- [Q] quit
+
+Example usage:
+
+    # Create environment and install dependencies (once)
+    python -m venv venv
+    source venv/bin/activate     # Windows: venv\\Scripts\\activate
+    pip install -r requirements.txt
+
+    # Run the live acquisition/processing script
+    python src/radar_acquisition_fft.py
+
+Notes:
+- This script currently reads configuration from module-level constants rather than
+  command-line arguments. Ensure PORT/BAUD and the radar settings are correct before running.
+"""
+
 
 import serial, struct, time, csv, os
 import numpy as np
@@ -282,4 +324,6 @@ def main():
         sp.close()
 
 if __name__=="__main__": main()
+     """Run live radar acquisition, FFT/range processing, phase tracking, and optional CSV recording."""
+
 
