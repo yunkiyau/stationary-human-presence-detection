@@ -51,15 +51,45 @@ NAME_MAP = {
     "spectral_centroid_Hz": "Spectral centroid (Hz)",
     "total_power": "Phase variance",
 }
+
+# Columns that are not detection features (identifiers / metadata).
 META_COLS = {
     "file", "label", "fs_Hz", "n_samples", "f_min_Hz", "f_max_Hz",
     "error", "phase_col", "time_col"
 }
 
 def disp(feat: str) -> str:
+   """
+    Return a human-friendly display name for a feature key.
+
+    Parameters
+    ----------
+    feat : str
+        Feature column name used in CSV files.
+
+    Returns
+    -------
+    str
+        Display name used in plots and printed summaries.
+    """
     return NAME_MAP.get(feat, feat.replace("_", " ").title())
 
 def slug(text: str) -> str:
+   """
+    Create a filesystem-safe slug from a display string.
+
+    This is used for plot filenames derived from feature display names.
+
+    Parameters
+    ----------
+    text : str
+        Input string (e.g., a plot title / axis label).
+
+    Returns
+    -------
+    str
+        lowercase string suitable for filenames.
+    """
     return (text.lower()
             .replace("(", "").replace(")", "")
             .replace("[", "").replace("]", "")
@@ -67,11 +97,46 @@ def slug(text: str) -> str:
             .replace(" ", "_").replace("/", "_"))
 
 def load_and_label(neg_csv: Path, pos_csv: Path) -> pd.DataFrame:
+   """
+    Load negative and positive feature CSVs and attach binary labels.
+
+    Parameters
+    ----------
+    neg_csv : Path
+        Path to CSV containing negative (no human) examples.
+    pos_csv : Path
+        Path to CSV containing positive (human present) examples.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Concatenated dataframe containing all samples with a 'label' column:
+        0 = negative, 1 = positive.
+    """
+
     df_neg = pd.read_csv(neg_csv); df_neg["label"] = 0
     df_pos = pd.read_csv(pos_csv); df_pos["label"] = 1
     return pd.concat([df_neg, df_pos], ignore_index=True)
 
 def pick_features(df: pd.DataFrame) -> list[str]:
+    """
+    Determine which columns should be treated as detection features.
+
+    Preference order:
+    1) Use DEFAULT_FEATURES if present in the dataframe.
+    2) Otherwise fall back to all numeric columns excluding META_COLS.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Loaded dataframe containing candidate feature columns.
+
+    Returns
+    -------
+    list[str]
+        List of feature column names to evaluate.
+    """
+   
     feats = [c for c in DEFAULT_FEATURES if c in df.columns]
     if feats:
         return feats
@@ -80,6 +145,27 @@ def pick_features(df: pd.DataFrame) -> list[str]:
             if c not in META_COLS and pd.api.types.is_numeric_dtype(df[c])]
 
 def clean_df(df: pd.DataFrame, features: list[str]) -> pd.DataFrame:
+   """
+    Coerce feature columns to numeric and drop rows with invalid values.
+
+    Steps:
+    - Convert feature columns to numeric (non-parsable values -> NaN).
+    - Replace +/- inf with NaN.
+    - Drop rows with missing values in features or label.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Raw concatenated dataframe.
+    features : list[str]
+        Feature column names to coerce and validate.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Cleaned dataframe containing only valid numeric feature rows.
+    """
+
     df = df.copy()
     for c in features:
         df[c] = pd.to_numeric(df[c], errors="coerce")
@@ -87,6 +173,44 @@ def clean_df(df: pd.DataFrame, features: list[str]) -> pd.DataFrame:
     return df.dropna(subset=features + ["label"])
 
 def youden_optimal_threshold(y_true: np.ndarray, x: np.ndarray) -> dict:
+    """
+    Find the single-feature threshold rule that maximizes Youden's J statistic.
+
+    The candidate thresholds are defined as midpoints between sorted unique
+    observed feature values. Both inequality directions are evaluated:
+
+        predict positive if x >= threshold
+        predict positive if x <= threshold
+
+    Metrics:
+    - TPR (sensitivity) = TP / (TP + FN)
+    - FPR = FP / (FP + TN)
+    - Youden's J = TPR - FPR
+
+    Tie-breaking:
+    - Prefer the candidate with higher Youden's J.
+    - If J is identical, prefer higher accuracy.
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        Ground-truth binary labels (0 = negative, 1 = positive).
+    x : np.ndarray
+        Feature values for each sample.
+
+    Returns
+    -------
+    dict
+        Best rule summary containing:
+        - threshold (float)
+        - direction (str): '>=' or '<='
+        - J (float)
+        - TPR (float)
+        - FPR (float)
+        - accuracy (float)
+        - confusion (tuple[int,int,int,int]): (TP, FP, TN, FN)
+    """
+    # Sort by feature value for reproducibility / stable unique extraction.
     order = np.argsort(x); xs = x[order]; ys = y_true[order]
     uniq = np.unique(xs)
 
@@ -99,7 +223,9 @@ def youden_optimal_threshold(y_true: np.ndarray, x: np.ndarray) -> dict:
         return dict(threshold=float(uniq[0]), direction=">=", J=tpr-fpr,
                     TPR=tpr, FPR=fpr, confusion=(tp,fp,tn,fn), accuracy=acc)
 
+   # Midpoints between adjacent unique values define non-trivial decision boundaries that can change predictions.
     mids = (uniq[:-1] + uniq[1:]) / 2.0
+   
     best = None
     for thr, direction in product(mids, (">=","<=")):
         y_pred = (x >= thr).astype(int) if direction==">=" else (x <= thr).astype(int)
@@ -118,7 +244,28 @@ def youden_optimal_threshold(y_true: np.ndarray, x: np.ndarray) -> dict:
             best = cand
     return best
 
-def plot_histogram(df: pd.DataFrame, feat_key: str, feat_display: str, thr: float, plots_dir: Path):
+def plot_histogram(df: pd.DataFrame, feat_key: str, feat_display: str, thr: float, plots_dir: Path) -> None:
+   """
+    Plot class-conditional histograms for a feature and mark the chosen threshold.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Cleaned dataframe containing the feature and 'label' column.
+    feat_key : str
+        Feature column name in the dataframe.
+    feat_display : str
+        Display name used for plot labels.
+    thr : float
+        Selected threshold value to be drawn as a vertical line.
+    plots_dir : Path
+        Output directory for saved histogram figures.
+
+    Returns
+    -------
+    None
+    """
+
     dat0 = df[df.label==0][feat_key].to_numpy()
     dat1 = df[df.label==1][feat_key].to_numpy()
     if dat0.size == 0 or dat1.size == 0:
@@ -142,7 +289,8 @@ def plot_histogram(df: pd.DataFrame, feat_key: str, feat_display: str, thr: floa
     plt.savefig(fig_path, dpi=144, bbox_inches="tight")
     plt.close()
 
-def main():
+def main() -> None:
+   """Entry point: compute Youden-optimal thresholds and generate summary outputs."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--neg", type=Path, default=Path("dev_neg_features.csv"))
     ap.add_argument("--pos", type=Path, default=Path("dev_pos_features.csv"))
@@ -209,4 +357,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
