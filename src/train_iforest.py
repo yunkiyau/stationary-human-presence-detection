@@ -43,7 +43,7 @@ import matplotlib.pyplot as plt
 
 # ---------------- Helpers ----------------
 def list_csvs(folder: Path, recursive: bool) -> list[Path]:
-   """
+    """
     List CSV files under a folder.
 
     Parameters
@@ -63,7 +63,7 @@ def list_csvs(folder: Path, recursive: bool) -> list[Path]:
     return sorted(p for p in folder.glob("*.csv") if p.is_file())
 
 def load_fft_vector(csv_path: Path, from_col: int = 4) -> np.ndarray | None:
-     """
+    """
     Load one CSV file and return a single FFT-bin feature vector.
 
     The script expects FFT bins to start at column index `from_col`. If the CSV has
@@ -113,8 +113,8 @@ def load_fft_vector(csv_path: Path, from_col: int = 4) -> np.ndarray | None:
     v = v / (np.linalg.norm(v) + 1e-12)
     return v
 
-def build_name_sets(folder: Path | None) -> tuple[set[str], set[str]]::
-   """
+def build_name_sets(folder: Path | None) -> tuple[set[str], set[str]]:
+    """
     Build fast lookup sets for matching dev files to pos/neg ground-truth folders.
 
     The matching is done by:
@@ -141,7 +141,7 @@ def build_name_sets(folder: Path | None) -> tuple[set[str], set[str]]::
     return files_set, stems_set
 
 def infer_label_by_dirs(path: Path, pos_sets, neg_sets) -> int | None:
-   """
+    """
     Infer ground-truth label for a file based on membership in pos/neg directories.
 
     Returns:
@@ -180,7 +180,7 @@ def infer_label_by_dirs(path: Path, pos_sets, neg_sets) -> int | None:
     return None
 
 def fit_pca(X, pca_components: int | None, pca_var: float | None) -> PCA | None:
-   """
+    """
     Fit PCA on training data if PCA settings are provided.
 
     Parameters
@@ -231,7 +231,7 @@ def cm_metrics(cm):
     return dict(accuracy=acc, sensitivity=tpr, specificity=tnr, precision=ppv, f1=f1, youden_J=J)
 
 def write_html(path: Path, ctx: dict):
-   """
+    """
     Write a small HTML report summarising training configuration and dev performance.
 
     Parameters
@@ -283,7 +283,7 @@ Accuracy: {esc['acc']} • TPR: {esc['tpr']} • TNR: {esc['tnr']} • F1: {esc[
 
 # ---------------- Main ----------------
 def main():
-   """Train an Isolation Forest on development FFT-bin features and write summary outputs."""
+    """Train an Isolation Forest on development FFT-bin features and write summary outputs."""
     ap = argparse.ArgumentParser(
         description="Train Isolation Forest on FFT-bin vectors (with optional PCA) and export dev summaries."
     )
@@ -423,5 +423,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 

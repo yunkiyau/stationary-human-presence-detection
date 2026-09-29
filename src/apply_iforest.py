@@ -38,7 +38,7 @@ from datetime import datetime
 import joblib
 
 def list_csvs(folder: Path, recursive: bool) -> list[Path]:
-  """
+    """
     List CSV files under a folder.
 
     Parameters
@@ -59,7 +59,7 @@ def list_csvs(folder: Path, recursive: bool) -> list[Path]:
     return sorted(p for p in folder.glob("*.csv") if p.is_file())
 
 def load_fft_vector(csv_path: Path, from_col: int = 4) -> np.ndarray | None:
-   """
+    """
     Load one CSV file and return a single FFT-bin feature vector.
 
     The script expects FFT bins to begin at column index `from_col`. If the CSV has
@@ -109,7 +109,7 @@ def load_fft_vector(csv_path: Path, from_col: int = 4) -> np.ndarray | None:
     return v
 
 def build_name_sets(folder: Path):
-   """
+    """
     Build lookup sets for fast ground-truth inference by directory membership.
 
     Parameters
@@ -132,7 +132,7 @@ def build_name_sets(folder: Path):
     return files_set, stems_set
 
 def infer_label_by_dirs(path: Path, pos_sets, neg_sets) -> int | None:
-  """
+    """
     Infer a file's ground-truth label from membership in pos/neg directories.
 
     Returns:
@@ -170,7 +170,7 @@ def infer_label_by_dirs(path: Path, pos_sets, neg_sets) -> int | None:
     return None
 
 def cm_metrics(cm):
-  """
+    """
     Compute standard binary classification metrics from a confusion matrix.
 
     Parameters
@@ -196,7 +196,7 @@ def cm_metrics(cm):
     return dict(accuracy=acc, sensitivity=tpr, specificity=tnr, precision=ppv, f1=f1, youden_J=J)
 
 def write_html(path: Path, ctx: dict) -> None:
-  """
+    """
     Write a small HTML summary report.
 
     Parameters
@@ -242,7 +242,7 @@ Accuracy: {esc['acc']} • TPR: {esc['tpr']} • TNR: {esc['tnr']} • F1: {esc[
     path.write_text(html_str, encoding="utf-8")
 
 def main():
-  """Load a trained Isolation Forest model and apply it to an evaluation dataset."""
+    """Load a trained Isolation Forest model and apply it to an evaluation dataset."""
     ap = argparse.ArgumentParser(
         description="Apply a trained Isolation Forest model to eval CSVs and write predictions + HTML summary."
     )
@@ -321,5 +321,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 

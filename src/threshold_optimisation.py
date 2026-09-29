@@ -59,7 +59,7 @@ META_COLS = {
 }
 
 def disp(feat: str) -> str:
-   """
+    """
     Return a human-friendly display name for a feature key.
 
     Parameters
@@ -75,7 +75,7 @@ def disp(feat: str) -> str:
     return NAME_MAP.get(feat, feat.replace("_", " ").title())
 
 def slug(text: str) -> str:
-   """
+    """
     Create a filesystem-safe slug from a display string.
 
     This is used for plot filenames derived from feature display names.
@@ -97,7 +97,7 @@ def slug(text: str) -> str:
             .replace(" ", "_").replace("/", "_"))
 
 def load_and_label(neg_csv: Path, pos_csv: Path) -> pd.DataFrame:
-   """
+    """
     Load negative and positive feature CSVs and attach binary labels.
 
     Parameters
@@ -145,7 +145,7 @@ def pick_features(df: pd.DataFrame) -> list[str]:
             if c not in META_COLS and pd.api.types.is_numeric_dtype(df[c])]
 
 def clean_df(df: pd.DataFrame, features: list[str]) -> pd.DataFrame:
-   """
+    """
     Coerce feature columns to numeric and drop rows with invalid values.
 
     Steps:
@@ -245,7 +245,7 @@ def youden_optimal_threshold(y_true: np.ndarray, x: np.ndarray) -> dict:
     return best
 
 def plot_histogram(df: pd.DataFrame, feat_key: str, feat_display: str, thr: float, plots_dir: Path) -> None:
-   """
+    """
     Plot class-conditional histograms for a feature and mark the chosen threshold.
 
     Parameters
@@ -290,7 +290,7 @@ def plot_histogram(df: pd.DataFrame, feat_key: str, feat_display: str, thr: floa
     plt.close()
 
 def main() -> None:
-   """Entry point: compute Youden-optimal thresholds and generate summary outputs."""
+    """Entry point: compute Youden-optimal thresholds and generate summary outputs."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--neg", type=Path, default=Path("dev_neg_features.csv"))
     ap.add_argument("--pos", type=Path, default=Path("dev_pos_features.csv"))
@@ -357,5 +357,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 

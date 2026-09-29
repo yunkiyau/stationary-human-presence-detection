@@ -17,14 +17,14 @@ To support this investigation, I developed a fully custom Python radar interface
 - Extracting the unwrapped temporal phase ϕ(t)  
 - Saving timestamped CSV data for further analysis  
 
-The detection pipelines in this repository reproduce the analyses reported in the final research article, including the feature-extraction, Youden’s-J threshold optimisation, model training, and evaluation.
+The detection pipelines in this repository reproduce the analyses reported in the final research article, covering Youden’s-J threshold optimisation, model training, and evaluation. The threshold script consumes precomputed feature tables; the full feature-extraction workflow and complete recording collection are not included.
 
 ---
 
 ## Repository Structure
 
 ```text
-scripts/
+src/
 │
 ├── radar_acquisition_fft.py
 ├── threshold_optimisation.py
@@ -38,8 +38,12 @@ models/
     iforest_PCA_negonly.joblib
 
 report/
-   Yunki Yau Dalyell Report 12NOV25.pdf
+   Stationary_Human_Presence_Detection_using_24_GHz_radar21NOV25.pdf
 ```
+
+## Report and available data
+
+The [final project report](report/Stationary_Human_Presence_Detection_using_24_GHz_radar21NOV25.pdf) describes 60 recordings: 44 for development and 16 for evaluation. Only one example recording is included here, so this checkout alone cannot reproduce the reported performance metrics. Supply your own development/evaluation folders and precomputed positive/negative feature CSVs for the analysis commands below. These are real hardware measurements; no synthetic data is presented as research evidence.
 
 ## Installation
 
@@ -68,7 +72,7 @@ The overall workflow is:
 
 Run the main acquisition script:
 ```bash
-python scripts/radar_acquisition_fft.py
+python src/radar_acquisition_fft.py
 ```
 
 This script streams raw I/Q ADC data from the radar in real time, performs FFT-based range processing, computes the weighted complex sum within a specified range gate, and displays live diagnostic plots.
@@ -80,7 +84,7 @@ Ensure that the correct serial port and radar configuration parameters are set i
 
 Run the threshold optimisation and evaluation pipeline:
 ```bash
-python scripts/threshold_optimisation.py
+python src/threshold_optimisation.py --neg dev_neg_features.csv --pos dev_pos_features.csv
 ```
 
 This script loads extracted feature CSVs, evaluates candidate thresholds for each feature, and selects the rule that maximises Youden’s J statistic.
@@ -90,7 +94,7 @@ It generates summary CSVs, histograms, and performance metrics consistent with t
 
 Train the model
 ```bash
-python scripts/train_iforest.py
+python src/train_iforest.py --dev_dir dev_raw --dev_posdir dev_pos --dev_negdir dev_neg --pca_var 0.95 --out_model iforest_model.joblib
 ```
 
 This script trains a PCA + Isolation Forest anomaly detector using development data (negative samples only, as reported).
@@ -98,7 +102,7 @@ The trained model is saved as a .joblib file for later use.
 
 Apply the trained model
 ```bash
-python scripts/apply_iforest.py
+python src/apply_iforest.py --model iforest_model.joblib --eval_dir eval_raw --eval_posdir eval_pos --eval_negdir eval_neg
 ```
 
 This script applies the trained model to unseen evaluation data and outputs prediction CSVs and HTML summaries containing performance metrics and confusion matrices.
@@ -155,7 +159,7 @@ Implements the classical threshold-based classifier used in the paper.
 What it does:
 
 - Loads positive and negative feature CSVs  
-- Extracts hand-engineered features:  
+- Uses precomputed hand-engineered feature columns:  
   - Spectral flatness  
   - Crest factor  
   - Spectral centroid (Hz)  
@@ -235,3 +239,14 @@ Supervised by Dr. Graham Brooker.
 Code and documentation are shared for academic review and demonstration purposes.
 Please contact the author before reusing or redistributing any portion of this work.
 
+
+
+## Offline regression checks
+
+After installing the requirements, run:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+These checks use synthetic data or simulated instruments. They verify software behaviour, not hardware operation or the original experimental results.
